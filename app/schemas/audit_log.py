@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, Dict, Any
-from uuid import UUID
 
 
 class TenantBase(BaseModel):
@@ -22,7 +21,7 @@ class TenantCreate(TenantBase):
 class TenantResponse(TenantBase):
     """esquema para devolver datos de tenant en respuestas
     incluye campos extra generados por la base de datos"""
-    id: UUID  # id unico del tenant
+    id: str  # id unico del tenant
     created_at: datetime  # fecha y hora de creacion del tenant
     updated_at: Optional[datetime] = None  # fecha y hora de ultima actualizacion, puede ser None
 
@@ -34,7 +33,7 @@ class TenantResponse(TenantBase):
 class AuditLogBase(BaseModel):
     """esquema base para datos de audit log, define los campos principales"""
 
-    tenant_id: UUID  # id del tenant al que pertenece este log (obligatorio)
+    tenant_id: str    # id del tenant al que pertenece este log (obligatorio)
 
     user_id: str = Field(..., min_length=1, max_length=255)  # id del usuario que realizo la accion
 
@@ -76,7 +75,7 @@ class AuditLogResponse(AuditLogBase):
     """esquema para devolver datos de audit log en respuestas
     incluye campos extra generados por la base de datos"""
 
-    id: UUID  # id unico del log
+    id: str    # id unico del log
 
     timestamp: datetime  # fecha y hora en que ocurrio el evento
 
@@ -90,7 +89,7 @@ class AuditLogResponse(AuditLogBase):
 class AuditLogFilter(BaseModel):
     """esquema para filtrar los audit logs en consultas"""
 
-    tenant_id: Optional[UUID] = None  # filtrar por tenant id, opcional
+    tenant_id: Optional[str  ] = None  # filtrar por tenant id, opcional
 
     user_id: Optional[str] = None  # filtrar por user id, opcional
 

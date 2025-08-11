@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, DateTime, Text, JSON, Integer
-from sqlalchemy.dialects.postgresql import UUID, INET
+import uuid
+from sqlalchemy import String
 from sqlalchemy.sql import func
 import uuid
 from ..core.database import Base
@@ -13,7 +14,7 @@ class Tenant(Base):
     __tablename__ = "tenants"
 
     # id unico del tenant, generado automaticamente como UUID
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(180), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # nombre del tenant, obligatorio y unico
     name = Column(String(255), nullable=False, unique=True)
@@ -36,10 +37,12 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     # identificador unico del log, generado automaticamente como UUID
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(180), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String(180), nullable=False)
 
     # multi-tenancy: id del tenant al que pertenece este log (obligatorio)
-    tenant_id = Column(UUID(as_uuid=True), nullable=False)
+    id = Column(String(180), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String(180), nullable=False)
 
     # informacion de usuario y sesion
     user_id = Column(String(255), nullable=False)          # id del usuario que realizo la accion
@@ -54,10 +57,10 @@ class AuditLog(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())  # fecha y hora del evento
 
     # contexto de la peticion
-    ip_address = Column(INET, nullable=True)                # direccion ip del cliente (opcional)
+    ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)                # informacion del navegador o cliente (opcional)
 
-    # cambios de estado antes y despues (en formato JSON para flexibilidad)
+    # cambios de estado antes y despues
     before_state = Column(JSON, nullable=True)              # estado del recurso antes de la accion (opcional)
     after_state = Column(JSON, nullable=True)               # estado del recurso despues de la accion (opcional)
 
