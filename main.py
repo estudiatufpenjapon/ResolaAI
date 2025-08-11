@@ -1,1 +1,0 @@
-print("Esto es una prueba de script para verificar el funcionamiento de Github")

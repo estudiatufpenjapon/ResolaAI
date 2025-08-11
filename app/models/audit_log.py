@@ -7,57 +7,66 @@ from ..core.database import Base
 
 class Tenant(Base):
     """
-    Tenant model for multi-tenancy support
-    Each tenant represents a separate organization/application
+    modelo Tenant para soporte multi-tenancy
+    cada tenant representa una organizacion o aplicacion separada
     """
     __tablename__ = "tenants"
 
+    # id unico del tenant, generado automaticamente como UUID
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # nombre del tenant, obligatorio y unico
     name = Column(String(255), nullable=False, unique=True)
+
+    # descripcion opcional del tenant, texto libre
     description = Column(Text, nullable=True)
+
+    # fecha y hora de creacion, se pone automaticamente al crear el registro
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # fecha y hora de la ultima actualizacion, se actualiza automaticamente
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class AuditLog(Base):
     """
-    Main audit log model
-    Stores all user actions and system events with full context
+    modelo principal de auditoria
+    almacena todas las acciones de usuario y eventos del sistema con contexto completo
     """
     __tablename__ = "audit_logs"
 
-    # Primary identifier
+    # identificador unico del log, generado automaticamente como UUID
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Multi-tenancy
+    # multi-tenancy: id del tenant al que pertenece este log (obligatorio)
     tenant_id = Column(UUID(as_uuid=True), nullable=False)
 
-    # User and session information
-    user_id = Column(String(255), nullable=False)
-    session_id = Column(String(255), nullable=True)
+    # informacion de usuario y sesion
+    user_id = Column(String(255), nullable=False)          # id del usuario que realizo la accion
+    session_id = Column(String(255), nullable=True)        # id de la sesion del usuario (opcional)
 
-    # Action details
-    action = Column(String(50), nullable=False)  # CREATE, UPDATE, DELETE, VIEW, etc.
-    resource_type = Column(String(50), nullable=False)  # user, order, product, etc.
-    resource_id = Column(String(255), nullable=False)
+    # detalles de la accion
+    action = Column(String(50), nullable=False)             # tipo de accion (crear, actualizar, borrar, ver, etc)
+    resource_type = Column(String(50), nullable=False)      # tipo de recurso afectado (usuario, pedido, producto, etc)
+    resource_id = Column(String(255), nullable=False)       # id del recurso afectado
 
-    # Timing information
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    # informacion temporal
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())  # fecha y hora del evento
 
-    # Request context
-    ip_address = Column(INET, nullable=True)
-    user_agent = Column(Text, nullable=True)
+    # contexto de la peticion
+    ip_address = Column(INET, nullable=True)                # direccion ip del cliente (opcional)
+    user_agent = Column(Text, nullable=True)                # informacion del navegador o cliente (opcional)
 
-    # State changes (JSON format for flexibility)
-    before_state = Column(JSON, nullable=True)
-    after_state = Column(JSON, nullable=True)
+    # cambios de estado antes y despues (en formato JSON para flexibilidad)
+    before_state = Column(JSON, nullable=True)              # estado del recurso antes de la accion (opcional)
+    after_state = Column(JSON, nullable=True)               # estado del recurso despues de la accion (opcional)
 
-    # Additional context
-    metadata = Column(JSON, nullable=True)  # Custom fields
-    message = Column(Text, nullable=True)  # Human readable description
+    # contexto adicional
+    custom_metadata = Column(JSON, nullable=True)           # metadatos personalizados (opcional)
+    message = Column(Text, nullable=True)                    # descripcion legible para humanos (opcional)
 
-    # Severity levels: INFO, WARNING, ERROR, CRITICAL
+    # niveles de severidad: INFO, WARNING, ERROR, CRITICAL
     severity = Column(String(20), default="INFO", nullable=False)
 
-    # Audit trail for the audit logs themselves
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # auditoria para los propios logs
+    created_at = Column(DateTime(timezone=True), server_default=func.now())  # fecha y hora de creacion del log

@@ -15,7 +15,7 @@ from ...schemas.audit_log import (
     PaginationParams
 )
 
-# Create router for audit log endpoints
+# crear el router para los endpoints de audit log
 router = APIRouter(prefix="/logs", tags=["audit-logs"])
 
 
@@ -25,17 +25,17 @@ def create_audit_log(
         db: Session = Depends(get_db)
 ):
     """
-    Create a new audit log entry
+    crear una nueva entrada de audit log
 
-    Creates a new audit log with all provided information.
-    Validates tenant exists before creating the log.
+    crea un nuevo registro de auditoria con toda la informacion proporcionada
+    valida que el tenant exista antes de crear el log
     """
-    # Check if tenant exists
+    # verificar si el tenant existe
     tenant = db.query(Tenant).filter(Tenant.id == log_data.tenant_id).first()
     if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
+        raise HTTPException(status_code=404, detail="tenant not found")
 
-    # Create new audit log
+    # crear nuevo audit log
     db_log = AuditLog(**log_data.dict())
     db.add(db_log)
     db.commit()
@@ -46,28 +46,28 @@ def create_audit_log(
 
 @router.get("/", response_model=AuditLogListResponse)
 def get_audit_logs(
-        # Pagination parameters
-        page: int = Query(default=1, ge=1, description="Page number"),
-        page_size: int = Query(default=50, ge=1, le=1000, description="Items per page"),
+        # parametros para paginacion
+        page: int = Query(default=1, ge=1, description="numero de pagina"),
+        page_size: int = Query(default=50, ge=1, le=1000, description="elementos por pagina"),
 
-        # Filter parameters
-        tenant_id: Optional[UUID] = Query(None, description="Filter by tenant ID"),
-        user_id: Optional[str] = Query(None, description="Filter by user ID"),
-        action: Optional[str] = Query(None, description="Filter by action type"),
-        resource_type: Optional[str] = Query(None, description="Filter by resource type"),
-        severity: Optional[str] = Query(None, description="Filter by severity level"),
-        start_date: Optional[datetime] = Query(None, description="Filter logs after this date"),
-        end_date: Optional[datetime] = Query(None, description="Filter logs before this date"),
+        # parametros para filtrado
+        tenant_id: Optional[UUID] = Query(None, description="filtrar por tenant id"),
+        user_id: Optional[str] = Query(None, description="filtrar por user id"),
+        action: Optional[str] = Query(None, description="filtrar por tipo de accion"),
+        resource_type: Optional[str] = Query(None, description="filtrar por tipo de recurso"),
+        severity: Optional[str] = Query(None, description="filtrar por nivel de severidad"),
+        start_date: Optional[datetime] = Query(None, description="filtrar logs despues de esta fecha"),
+        end_date: Optional[datetime] = Query(None, description="filtrar logs antes de esta fecha"),
 
         db: Session = Depends(get_db)
 ):
     """
-    Get audit logs with filtering and pagination
+    obtener audit logs con filtros y paginacion
 
-    Returns a paginated list of audit logs with optional filters.
-    Supports filtering by tenant, user, action, resource type, severity, and date range.
+    devuelve una lista paginada de logs con filtros opcionales
+    permite filtrar por tenant, usuario, accion, tipo de recurso, severidad y rango de fechas
     """
-    # Build query with filters
+    # construir la consulta con los filtros
     query = db.query(AuditLog)
 
     if tenant_id:
@@ -85,17 +85,17 @@ def get_audit_logs(
     if end_date:
         query = query.filter(AuditLog.timestamp <= end_date)
 
-    # Order by timestamp descending (newest first)
+    # ordenar por timestamp descendente (los mas recientes primero)
     query = query.order_by(AuditLog.timestamp.desc())
 
-    # Get total count for pagination
+    # obtener el total para la paginacion
     total = query.count()
 
-    # Apply pagination
+    # aplicar paginacion con offset y limit
     offset = (page - 1) * page_size
     logs = query.offset(offset).limit(page_size).all()
 
-    # Calculate total pages
+    # calcular total de paginas
     total_pages = (total + page_size - 1) // page_size
 
     return AuditLogListResponse(
@@ -113,26 +113,26 @@ def get_audit_log(
         db: Session = Depends(get_db)
 ):
     """
-    Get a specific audit log entry by ID
+    obtener un log especifico por su id
 
-    Returns detailed information for a single audit log entry.
+    devuelve la informacion detallada de un log de auditoria unico
     """
     log = db.query(AuditLog).filter(AuditLog.id == log_id).first()
     if not log:
-        raise HTTPException(status_code=404, detail="Audit log not found")
+        raise HTTPException(status_code=404, detail="audit log not found")
 
     return log
 
 
 @router.get("/stats", response_model=dict)
 def get_audit_log_stats(
-        tenant_id: Optional[UUID] = Query(None, description="Filter stats by tenant ID"),
+        tenant_id: Optional[UUID] = Query(None, description="filtrar estadisticas por tenant id"),
         db: Session = Depends(get_db)
 ):
     """
-    Get audit log statistics
+    obtener estadisticas de los audit logs
 
-    Returns basic statistics about audit logs including counts by action and severity.
+    devuelve estadisticas basicas sobre los logs, incluyendo conteos por accion y severidad
     """
     query = db.query(AuditLog)
 
@@ -141,14 +141,14 @@ def get_audit_log_stats(
 
     total_logs = query.count()
 
-    # Count by action
+    # conteo por accion
     action_counts = {}
     actions = db.query(AuditLog.action).distinct().all()
     for (action,) in actions:
         count = query.filter(AuditLog.action == action).count()
         action_counts[action] = count
 
-    # Count by severity
+    # conteo por severidad
     severity_counts = {}
     severities = db.query(AuditLog.severity).distinct().all()
     for (severity,) in severities:
@@ -162,16 +162,16 @@ def get_audit_log_stats(
     }
 
 
-# Tenant management endpoints
+# endpoints para gestion de tenants
 @router.post("/tenants", response_model=TenantResponse)
 def create_tenant(
         tenant_data: TenantCreate,
         db: Session = Depends(get_db)
 ):
     """
-    Create a new tenant
+    crear un nuevo tenant
 
-    Creates a new tenant for multi-tenant audit logging.
+    crea un tenant nuevo para el sistema multi-tenant de auditoria
     """
     db_tenant = Tenant(**tenant_data.dict())
     db.add(db_tenant)
@@ -184,8 +184,8 @@ def create_tenant(
 @router.get("/tenants", response_model=list[TenantResponse])
 def get_tenants(db: Session = Depends(get_db)):
     """
-    Get all tenants
+    obtener todos los tenants
 
-    Returns a list of all available tenants.
+    devuelve una lista con todos los tenants disponibles
     """
     return db.query(Tenant).all()
