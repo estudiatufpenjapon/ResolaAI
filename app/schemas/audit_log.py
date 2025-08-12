@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class TenantBase(BaseModel):
@@ -18,16 +18,16 @@ class TenantCreate(TenantBase):
     pass
 
 
-class TenantResponse(TenantBase):
+class TenantResponse(BaseModel):
     """esquema para devolver datos de tenant en respuestas
     incluye campos extra generados por la base de datos"""
-    id: str  # id unico del tenant
+    id: str  # id unico del tenant - string simple, sin validacion UUID
+    name: str
+    description: Optional[str] = None
     created_at: datetime  # fecha y hora de creacion del tenant
     updated_at: Optional[datetime] = None  # fecha y hora de ultima actualizacion, puede ser None
 
-    class Config:
-        # permite crear este modelo a partir de objetos que no son dict (como objetos SQLAlchemy)
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AuditLogBase(BaseModel):
@@ -71,25 +71,34 @@ class AuditLogCreate(AuditLogBase):
     pass
 
 
-class AuditLogResponse(AuditLogBase):
+class AuditLogResponse(BaseModel):
     """esquema para devolver datos de audit log en respuestas
     incluye campos extra generados por la base de datos"""
 
-    id: str    # id unico del log
-
+    id: str    # id unico del log - string simple, sin validacion UUID
+    tenant_id: str
+    user_id: str
+    session_id: Optional[str] = None
+    action: str
+    resource_type: str
+    resource_id: str
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    before_state: Optional[Dict[str, Any]] = None
+    after_state: Optional[Dict[str, Any]] = None
+    custom_metadata: Optional[Dict[str, Any]] = None
+    message: Optional[str] = None
+    severity: str
     timestamp: datetime  # fecha y hora en que ocurrio el evento
-
     created_at: datetime  # fecha y hora en que se registro el log
 
-    class Config:
-        # permite crear este modelo a partir de objetos SQLAlchemy u otros que no sean dict
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AuditLogFilter(BaseModel):
     """esquema para filtrar los audit logs en consultas"""
 
-    tenant_id: Optional[str  ] = None  # filtrar por tenant id, opcional
+    tenant_id: Optional[str] = None  # filtrar por tenant id, opcional
 
     user_id: Optional[str] = None  # filtrar por user id, opcional
 
@@ -115,7 +124,7 @@ class PaginationParams(BaseModel):
 class AuditLogListResponse(BaseModel):
     """esquema para devolver listas paginadas de audit logs"""
 
-    logs: list[AuditLogResponse]  # lista con los logs de auditoria en la pagina actual
+    logs: List[AuditLogResponse]  # lista con los logs de auditoria en la pagina actual
 
     total: int  # total de logs encontrados sin paginar
 

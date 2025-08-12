@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional
-from uuid import UUID
+from typing import Optional, List
 from datetime import datetime
 
 from ...core.database import get_db
@@ -19,6 +18,75 @@ from ...schemas.audit_log import (
 router = APIRouter(prefix="/logs", tags=["audit-logs"])
 
 
+# =================== ENDPOINTS DE TENANTS PRIMERO ===================
+@router.post("/tenants", response_model=TenantResponse)
+def create_tenant(
+        tenant_data: TenantCreate,
+        db: Session = Depends(get_db)
+):
+    """
+    crear un nuevo tenant
+
+    crea un tenant nuevo para el sistema multi-tenant de auditoria
+    """
+    db_tenant = Tenant(**tenant_data.model_dump())
+    db.add(db_tenant)
+    db.commit()
+    db.refresh(db_tenant)
+
+    return db_tenant
+
+
+@router.get("/tenants", response_model=List[TenantResponse])
+def get_tenants(db: Session = Depends(get_db)):
+    """
+    obtener todos los tenants
+
+    devuelve una lista con todos los tenants disponibles
+    """
+    return db.query(Tenant).all()
+
+
+# =================== ENDPOINTS DE STATS ===================
+@router.get("/stats", response_model=dict)
+def get_audit_log_stats(
+        tenant_id: Optional[str] = Query(None, description="filtrar estadisticas por tenant id"),
+        db: Session = Depends(get_db)
+):
+    """
+    obtener estadisticas de los audit logs
+
+    devuelve estadisticas basicas sobre los logs, incluyendo conteos por accion y severidad
+    """
+    query = db.query(AuditLog)
+
+    if tenant_id:
+        query = query.filter(AuditLog.tenant_id == tenant_id)
+
+    total_logs = query.count()
+
+    # conteo por accion
+    action_counts = {}
+    actions = db.query(AuditLog.action).distinct().all()
+    for (action,) in actions:
+        count = query.filter(AuditLog.action == action).count()
+        action_counts[action] = count
+
+    # conteo por severidad
+    severity_counts = {}
+    severities = db.query(AuditLog.severity).distinct().all()
+    for (severity,) in severities:
+        count = query.filter(AuditLog.severity == severity).count()
+        severity_counts[severity] = count
+
+    return {
+        "total_logs": total_logs,
+        "action_counts": action_counts,
+        "severity_counts": severity_counts
+    }
+
+
+# =================== ENDPOINTS DE AUDIT LOGS ===================
 @router.post("/", response_model=AuditLogResponse)
 def create_audit_log(
         log_data: AuditLogCreate,
@@ -36,7 +104,7 @@ def create_audit_log(
         raise HTTPException(status_code=404, detail="tenant not found")
 
     # crear nuevo audit log
-    db_log = AuditLog(**log_data.dict())
+    db_log = AuditLog(**log_data.model_dump())
     db.add(db_log)
     db.commit()
     db.refresh(db_log)
@@ -51,7 +119,7 @@ def get_audit_logs(
         page_size: int = Query(default=50, ge=1, le=1000, description="elementos por pagina"),
 
         # parametros para filtrado
-        tenant_id: Optional[UUID] = Query(None, description="filtrar por tenant id"),
+        tenant_id: Optional[str] = Query(None, description="filtrar por tenant id"),
         user_id: Optional[str] = Query(None, description="filtrar por user id"),
         action: Optional[str] = Query(None, description="filtrar por tipo de accion"),
         resource_type: Optional[str] = Query(None, description="filtrar por tipo de recurso"),
@@ -107,9 +175,10 @@ def get_audit_logs(
     )
 
 
+# =================== ENDPOINT ESPECÍFICO AL FINAL ===================
 @router.get("/{log_id}", response_model=AuditLogResponse)
 def get_audit_log(
-        log_id: UUID,
+        log_id: str,  # string simple, sin validacion UUID
         db: Session = Depends(get_db)
 ):
     """
@@ -122,70 +191,3 @@ def get_audit_log(
         raise HTTPException(status_code=404, detail="audit log not found")
 
     return log
-
-
-@router.get("/stats", response_model=dict)
-def get_audit_log_stats(
-        tenant_id: Optional[UUID] = Query(None, description="filtrar estadisticas por tenant id"),
-        db: Session = Depends(get_db)
-):
-    """
-    obtener estadisticas de los audit logs
-
-    devuelve estadisticas basicas sobre los logs, incluyendo conteos por accion y severidad
-    """
-    query = db.query(AuditLog)
-
-    if tenant_id:
-        query = query.filter(AuditLog.tenant_id == tenant_id)
-
-    total_logs = query.count()
-
-    # conteo por accion
-    action_counts = {}
-    actions = db.query(AuditLog.action).distinct().all()
-    for (action,) in actions:
-        count = query.filter(AuditLog.action == action).count()
-        action_counts[action] = count
-
-    # conteo por severidad
-    severity_counts = {}
-    severities = db.query(AuditLog.severity).distinct().all()
-    for (severity,) in severities:
-        count = query.filter(AuditLog.severity == severity).count()
-        severity_counts[severity] = count
-
-    return {
-        "total_logs": total_logs,
-        "action_counts": action_counts,
-        "severity_counts": severity_counts
-    }
-
-
-# endpoints para gestion de tenants
-@router.post("/tenants", response_model=TenantResponse)
-def create_tenant(
-        tenant_data: TenantCreate,
-        db: Session = Depends(get_db)
-):
-    """
-    crear un nuevo tenant
-
-    crea un tenant nuevo para el sistema multi-tenant de auditoria
-    """
-    db_tenant = Tenant(**tenant_data.dict())
-    db.add(db_tenant)
-    db.commit()
-    db.refresh(db_tenant)
-
-    return db_tenant
-
-
-@router.get("/tenants", response_model=list[TenantResponse])
-def get_tenants(db: Session = Depends(get_db)):
-    """
-    obtener todos los tenants
-
-    devuelve una lista con todos los tenants disponibles
-    """
-    return db.query(Tenant).all()
