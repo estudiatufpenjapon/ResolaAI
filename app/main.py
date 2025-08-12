@@ -4,7 +4,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.v1 import logs
+from app.api.v1 import logs, auth
 
 
 # funcion para crear las tablas de la base de datos
@@ -67,7 +67,12 @@ app.include_router(
     tags=["audit-logs"]          # etiqueta para agrupar estos endpoints en la documentacion
 )
 
-
+# incluir las rutas de autenticacion
+app.include_router(
+    auth.router,
+    prefix=settings.api_v1_str,  # ruta base para version 1 de la API
+    tags=["authentication"]      # etiqueta para agrupar estos endpoints en la documentacion
+)
 # endpoint raiz para chequeo basico de estado de la API
 @app.get("/")
 async def root():
